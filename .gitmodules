@@ -1,0 +1,27 @@
+﻿[submodule "evolution-core"]
+      path = evolution-core
+      url = https://github.com/kyama0922/evolution-core.git
+      
+[submodule "evolution-framework"]
+      path = evolution-framework
+      url = https://github.com/kyama0922/evolution-framework.git
+      
+[submodule "evolution-graphic"]
+      path = evolution-graphic
+      url = https://github.com/kyama0922/evolution-graphic.git
+      
+[submodule "evolution-input"]
+      path = evolution-input
+      url = https://github.com/kyama0922/evolution-input.git
+      
+[submodule "evolution-network"]
+      path = evolution-network
+      url = https://github.com/kyama0922/evolution-network.git
+
+[submodule "evolution-sound"]
+      path = evolution-sound
+      url = https://github.com/kyama0922/evolution-sound.git
+
+[submodule "evolution-utility"]
+      path = evolution-utility
+      url = https://github.com/kyama0922/evolution-utility.git     
