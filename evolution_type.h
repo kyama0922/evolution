@@ -10,6 +10,10 @@
 #include <string.h>
 #include <assert.h>
 
+#if defined(SSE)
+#include <emmintrin.h>
+#include <smmintrin.h>
+#endif
 //-------------------------------
 //	デフォルト型定義
 //-------------------------------
@@ -24,6 +28,28 @@ namespace EVOLUTION{
     typedef unsigned short      u16; //符号なし16bit整数型
     typedef unsigned int        u32; //符号なし32bit整数型
     typedef unsigned long long	u64; //符号なし64bit整数型
+
+#if defined(WIN32) | defined(WIN64)
+    __declspec(align(16))
+#endif
+    typedef struct{
+        union
+        {
+#if defined(SSE)
+            __m128 m128;
+            __m128i m128i;
+#endif
+            s8 s8_d[16];
+            s16 s16_d[8];
+            s32 s32_d[4];
+            s64 s64_d[2];
+
+            u8 u8_d[16];
+            u16 u16_d[8];
+            u32 u32_d[4];
+            u64 u64_d[2];
+        };
+    }e128;//EVOLUTION128bit型
 
 
     typedef float   f32; //32bit浮動小数型 
@@ -47,10 +73,11 @@ namespace EVOLUTION{
     typedef unsigned long long ptr_size_t;//64bitポインターサイズ(アーキテクチャによって変更されます)
 #endif
 
-    const u32 Byte = 1; //1バイト
-    const u32 KByte = 1024 * Byte;//1キロバイト
-    const u32 MByte = 1024 * KByte;//1メガバイト
-    const u32 GByte = 1024 * MByte;//1ギガバイト
+    
+    static const u32 Byte = 1; //1バイト
+    static const u32 KByte = 1024 * Byte;//1キロバイト
+    static const u32 MByte = 1024 * KByte;//1メガバイト
+    static const u32 GByte = 1024 * MByte;//1ギガバイト
 
 
 
@@ -70,15 +97,15 @@ namespace EVOLUTION{
     //-------------------------
     //Globally Unique Identifier
     //-------------------------
-    typedef struct {
-        unsigned long  Data1;
-        unsigned short Data2;
-        unsigned short Data3;
-        unsigned char  Data4[8];
-    }_Guid;
+    typedef struct{
+        u32  Data1;
+        u16 Data2;
+        u16 Data3;
+        u8  Data4[8];
+    }_GUID;
 
     //EVOLUTION GUID構造体
-    typedef _Guid EVOLUTION_IID;
+    typedef _GUID EVOLUTION_IID;
 
 
     //RESULT
@@ -137,38 +164,7 @@ namespace EVOLUTION{
         }
 
     };
-    //-------------------------------------------------------
-    //GUIDの比較
-    //-------------------------------------------------------
-    EVOLUTION_INLINE bool IsEqualGUID(EVOLUTION_IID rguid1, EVOLUTION_IID rguid2)
-    {
-        if (rguid1.Data1 != rguid2.Data1)
-        {
-            return false;
-        }
-        if (rguid1.Data2 != rguid2.Data2)
-        {
-            return false;
-        }
-        if (rguid1.Data3 != rguid2.Data3)
-        {
-            return false;
-        }
 
-        u32* rguid1_data4 = (u32*)&rguid1.Data4[0];
-        u32* rguid2_data4 = (u32*)&rguid2.Data4[0];
-        if (*rguid1_data4++ != *rguid2_data4++)
-        {
-            return false;
-        }
-
-        if (*rguid1_data4 != *rguid2_data4)
-        {
-            return false;
-        }
-
-        return true;
-    }
 
     //-------------------------------------------------------
     //EVOLUTION Globally Unique Identifier
@@ -196,10 +192,60 @@ namespace EVOLUTION{
                 throw;
             }
         }
+
+        EVOLUTION_INLINE e128* LoadGuidtoE128(e128& _out, const EVOLUTION_IID& guid){
+            _out.u64_d[0] = ((e128*)&guid)->u16_d[0];
+            _out.u64_d[1] = ((e128*)&guid)->u16_d[1];
+            return &_out;
+        }
+
+        //-------------------------------------------------------
+        //GUIDの比較
+        //-------------------------------------------------------
+        EVOLUTION_INLINE bool IsEqualGuid(const EVOLUTION_IID& guid1, const EVOLUTION_IID& guid2)
+        {
+#if defined(SSE)
+            e128 guid1_128, guid2_128;
+            LoadGuidtoE128(guid1_128 , guid2);
+            LoadGuidtoE128(guid2_128 , guid2);
+            __m128i ret = _mm_cmpeq_epi64(guid1_128.m128i, guid2_128.m128i);
+            return ret.m128i_u64[0] == ret.m128i_u64[1];
+#else
+            if (guid1.Data1 != guid2.Data1)
+            {
+                return false;
+            }
+            if (guid1.Data2 != guid2.Data2)
+            {
+                return false;
+            }
+            if (guid1.Data3 != guid2.Data3)
+            {
+                return false;
+            }
+
+            u32* guid1_data4 = (u32*)&guid1.Data4[0];
+            u32* guid2_data4 = (u32*)&guid2.Data4[0];
+            if (*guid1_data4++ != *guid2_data4++)
+            {
+                return false;
+            }
+
+            if (*guid1_data4 != *guid2_data4)
+            {
+                return false;
+            }
+            return true;
+#endif
+        }
+
     }
 }
 
-
+#ifndef EVOLUTION_EQUALGUID
+//GUIDのチェック
+#define EVOLUTION_EQUALGUID(guid1 ,guid2) ::EVOLUTION::FUNCTION::IsEqualGuid(guid1 ,guid2)
+#endif
 
 #ifndef EVOLUTION_SUCCEEDED
 //成功したかの検証
